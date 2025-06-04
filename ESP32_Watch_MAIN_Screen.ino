@@ -28,6 +28,7 @@ String lastTimeStr = "";
 
 int currentScreen = 0;  // 0: Main, 1: HR-SpO2, 2: Speed-Step
 bool screenOn = true;
+int previousScreen = -1; // Track last drawn screen
 
 #define BUTTON_PAGE 6
 #define BUTTON_SCREEN 7
@@ -164,7 +165,6 @@ void drawHrSpO2Screen() {
   maxim_heart_rate_and_oxygen_saturation(
     irBuffer, redBuffer, 100, &spo2, &validSpO2, &bpm, &validHeartRate);
 
-  tft.fillScreen(TFT_BLACK);
   drawHeartIcon(30, 83, TFT_RED);
   tft.setCursor(50, 75);
   tft.setTextColor(TFT_WHITE);
@@ -195,7 +195,6 @@ void drawSpeedStepScreen() {
     lastStepTime = now;
   }
 
-  tft.fillScreen(TFT_DARKGREY);
   tft.setTextColor(tft.color565(0, 255, 255));
   tft.setTextSize(3);
   tft.setCursor(80, 105);
@@ -213,6 +212,10 @@ void setup() {
   tft.setRotation(0);
   tft.fillScreen(TFT_WHITE);
   SPIFFS.begin(true);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
   timeClient.begin();
   timeClient.update();
   pinMode(BUTTON_PAGE, INPUT_PULLUP);
@@ -249,12 +252,20 @@ void loop() {
       lastButtonTime = millis();
       if (!screenOn) {
         tft.fillScreen(TFT_BLACK);
+        previousScreen = -1; // force redraw when screen turns back on
         return;
       }
     }
   }
 
   if (!screenOn) return;
+
+  if (currentScreen != previousScreen) {
+    if (currentScreen == 0) tft.fillScreen(TFT_WHITE);
+    else if (currentScreen == 1) tft.fillScreen(TFT_BLACK);
+    else if (currentScreen == 2) tft.fillScreen(TFT_DARKGREY);
+    previousScreen = currentScreen;
+  }
 
   if (currentScreen == 0) drawMainScreen();
   else if (currentScreen == 1) drawHrSpO2Screen();
